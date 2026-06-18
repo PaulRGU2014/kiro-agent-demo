@@ -1,29 +1,28 @@
 const express = require("express");
 const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.post("/agent/debug", async (req, res) => {
-  const { errorMessage } = req.body;
+const { runDebugAgent } = require("./agent/debugAgent");
 
-  if (!errorMessage) {
+app.post("/agent/debug", async (req, res) => {
+  const { errorMessage, error_message } = req.body;
+  const message = errorMessage || error_message;
+
+  if (!message) {
     return res.status(400).json({ error: "errorMessage is required" });
   }
 
-
-// For now, we simulate the AI agent.
-//Later this is where Kiro / OpenAI / Bedrock would be called
-  const result = {
-    explanation: "This error indicates something is undefined.",
-    likely_cause: "A variable or prop was used before being initialized.",
-    suggested_fix:
-      "Check where the variable is defined and add a null/undefined guard.",
-    severity: "medium",
-  };
-
-  return res.json(result);
+  try {
+    const result = await runDebugAgent(message);
+    return res.json(result);
+  } catch (err) {
+    console.error("/agent/debug failed:", err);
+    return res.status(500).json({ error: "Failed to analyze error message" });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
